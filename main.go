@@ -133,8 +133,10 @@ func main() {
 			}
 
 			var payload struct {
-				Room    string `json:"room"`
-				Message string `json:"message"`
+				Room     string `json:"room"`
+				Message  string `json:"message"`
+				Username string `json:"username"`
+				Avatar   string `json:"avatar"`
 			}
 			if err := json.Unmarshal(msg, &payload); err != nil {
 				log.Printf("json unmarshal: %v", err)
@@ -143,7 +145,7 @@ func main() {
 			if payload.Message == "" {
 				continue
 			}
-			hub.broadcast(payload.Message, payload.Room)
+			hub.broadcast(string(msg), room)
 		}
 	})
 
@@ -205,6 +207,23 @@ const indexHTML = `<!DOCTYPE html>
         <input id="room" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200" placeholder="Contoh: project-a" />
       </div>
       <div>
+        <label class="block text-sm font-medium text-slate-700">Username</label>
+        <input id="username" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200" placeholder="Contoh: dev123" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Pilih Avatar</label>
+        <div class="mt-2 grid grid-cols-4 gap-2" id="avatarOptions">
+          <button type="button" data-avatar="👾" class="avatarOption rounded-2xl border border-slate-300 bg-slate-50 p-3 text-2xl transition hover:border-slate-900">👾</button>
+          <button type="button" data-avatar="🧑‍💻" class="avatarOption rounded-2xl border border-slate-300 bg-slate-50 p-3 text-2xl transition hover:border-slate-900">🧑‍💻</button>
+          <button type="button" data-avatar="🎮" class="avatarOption rounded-2xl border border-slate-300 bg-slate-50 p-3 text-2xl transition hover:border-slate-900">🎮</button>
+          <button type="button" data-avatar="🤖" class="avatarOption rounded-2xl border border-slate-300 bg-slate-50 p-3 text-2xl transition hover:border-slate-900">🤖</button>
+          <button type="button" data-avatar="🐉" class="avatarOption rounded-2xl border border-slate-300 bg-slate-50 p-3 text-2xl transition hover:border-slate-900">🐉</button>
+          <button type="button" data-avatar="👻" class="avatarOption rounded-2xl border border-slate-300 bg-slate-50 p-3 text-2xl transition hover:border-slate-900">👻</button>
+          <button type="button" data-avatar="🦾" class="avatarOption rounded-2xl border border-slate-300 bg-slate-50 p-3 text-2xl transition hover:border-slate-900">🦾</button>
+          <button type="button" data-avatar="🧙" class="avatarOption rounded-2xl border border-slate-300 bg-slate-50 p-3 text-2xl transition hover:border-slate-900">🧙</button>
+        </div>
+      </div>
+      <div>
         <label class="block text-sm font-medium text-slate-700">Password (opsional)</label>
         <input id="password" type="password" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200" placeholder="Password room" />
       </div>
@@ -221,7 +240,9 @@ const roomModal = document.getElementById('roomModal');
 const closeRoomButton = document.getElementById('closeRoomButton');
 const cancelRoomButton = document.getElementById('cancelRoomButton');
 const roomInput = document.getElementById('room');
+const usernameInput = document.getElementById('username');
 const passwordInput = document.getElementById('password');
+const avatarOptions = document.querySelectorAll('.avatarOption');
 const joinButton = document.getElementById('joinButton');
 const input = document.getElementById('input');
 const status = document.getElementById('status');
@@ -229,6 +250,9 @@ const messages = document.getElementById('messages');
 let socket;
 let currentRoom = 'global';
 let currentPassword = '';
+let currentUsername = 'Guest';
+let currentAvatar = '👾';
+const avatarChoices = ['👾', '🧑‍💻', '🎮', '🤖', '🐉', '👻', '🦾', '🧙'];
 
 function setStatus(text) {
   status.textContent = text;
@@ -275,7 +299,7 @@ function connect(room, password) {
   socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws' + params);
 
   socket.addEventListener('open', function () {
-    setStatus('Terhubung ke room ' + currentRoom + ". Ketik lalu Enter untuk membagikan.");
+    setStatus('Terhubung ke room ' + currentRoom + '. Username: ' + currentUsername);
     input.disabled = false;
     input.focus();
   });
@@ -291,31 +315,67 @@ function connect(room, password) {
 }
 
 function addMessage(text) {
+  let payload = { username: 'Guest', avatar: '👾', message: text };
+  try {
+    payload = JSON.parse(text);
+  } catch (err) {
+    // fallback to plain text
+  }
+
   const wrapper = document.createElement('div');
   wrapper.className = 'rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm';
 
-  const pre = document.createElement('pre');
-  pre.textContent = text;
-  pre.className = 'whitespace-pre-wrap break-words text-sm text-slate-900';
+  const header = document.createElement('div');
+  header.className = 'flex items-center justify-between gap-3';
+
+  const userInfo = document.createElement('div');
+  userInfo.className = 'flex items-center gap-3';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-lg text-white';
+  avatar.textContent = payload.avatar || '👾';
+
+  const name = document.createElement('div');
+  name.className = 'flex flex-col';
+
+  const usernameEl = document.createElement('span');
+  usernameEl.className = 'text-sm font-semibold text-slate-900';
+  usernameEl.textContent = payload.username || 'Guest';
+
+  const roomEl = document.createElement('span');
+  roomEl.className = 'text-xs text-slate-500';
+  roomEl.textContent = payload.room ? payload.room : (currentRoom === 'global' ? 'Global' : currentRoom);
+
+  name.appendChild(usernameEl);
+  name.appendChild(roomEl);
+  userInfo.appendChild(avatar);
+  userInfo.appendChild(name);
 
   const copyButton = document.createElement('button');
-  copyButton.textContent = 'Copy';
+  copyButton.innerHTML = '📋';
   copyButton.type = 'button';
-  copyButton.className = 'mt-3 inline-flex items-center rounded-full bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-slate-800';
+  copyButton.className = 'inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-lg text-slate-700 transition hover:bg-slate-100';
   copyButton.addEventListener('click', async () => {
     try {
-      await copyToClipboard(text);
-      copyButton.textContent = 'Copied';
-      setTimeout(() => { copyButton.textContent = 'Copy'; }, 1200);
+      await copyToClipboard(payload.message || text);
+      copyButton.textContent = '✅';
+      setTimeout(() => { copyButton.innerHTML = '📋'; }, 1200);
     } catch (err) {
       console.error(err);
-      copyButton.textContent = 'Gagal';
-      setTimeout(() => { copyButton.textContent = 'Copy'; }, 1500);
+      copyButton.textContent = '❌';
+      setTimeout(() => { copyButton.innerHTML = '📋'; }, 1500);
     }
   });
 
+  header.appendChild(userInfo);
+  header.appendChild(copyButton);
+
+  const pre = document.createElement('pre');
+  pre.textContent = payload.message || text;
+  pre.className = 'mt-3 text-sm text-slate-700 whitespace-pre-wrap break-words';
+
+  wrapper.appendChild(header);
   wrapper.appendChild(pre);
-  wrapper.appendChild(copyButton);
   messages.prepend(wrapper);
 }
 
@@ -331,8 +391,22 @@ cancelRoomButton.addEventListener('click', () => {
   roomModal.classList.add('hidden');
 });
 
+avatarOptions.forEach((button, index) => {
+  button.addEventListener('click', () => {
+    avatarOptions.forEach(el => el.classList.remove('border-slate-900', 'ring-2', 'ring-slate-900'));
+    button.classList.add('border-slate-900', 'ring-2', 'ring-slate-900');
+    currentAvatar = button.dataset.avatar;
+  });
+});
+
+if (avatarOptions.length > 0) {
+  avatarOptions[0].classList.add('border-slate-900', 'ring-2', 'ring-slate-900');
+  currentAvatar = avatarOptions[0].dataset.avatar;
+}
+
 joinButton.addEventListener('click', () => {
   const room = roomInput.value.trim() || 'global';
+  currentUsername = usernameInput.value.trim() || 'Guest';
   const password = passwordInput.value;
   connect(room, password);
   roomModal.classList.add('hidden');
@@ -345,7 +419,7 @@ input.addEventListener('keydown', event => {
     if (!text || !socket || socket.readyState !== WebSocket.OPEN) {
       return;
     }
-    socket.send(JSON.stringify({ room: currentRoom, message: text }));
+    socket.send(JSON.stringify({ room: currentRoom, message: text, username: currentUsername, avatar: currentAvatar }));
     input.value = '';
   }
 });
