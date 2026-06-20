@@ -86,7 +86,7 @@ func (h *Hub) removeClient(conn *websocket.Conn) {
 
 func (h *Hub) ensureRoom(room, password string) error {
 	if room == "" {
-		room = "public"
+		room = "global"
 	}
 	if saved, ok := h.passwords[room]; ok {
 		if saved != password {
@@ -157,7 +157,7 @@ func roomFromQuery(r *http.Request) (string, string) {
 	room := r.URL.Query().Get("room")
 	password := r.URL.Query().Get("password")
 	if room == "" {
-		room = "public"
+		room = "global"
 	}
 	return room, password
 }
@@ -168,33 +168,58 @@ const indexHTML = `<!DOCTYPE html>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Shared Text & JSON Share</title>
-<style>
-body { font-family: system-ui, sans-serif; margin: 0; padding: 0; background: #f7f7f7; }
-.container { max-width: 760px; margin: 2rem auto; padding: 1rem; background: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-h1 { margin-top: 0; }
-textarea { width: 100%; min-height: 150px; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-family: monospace; font-size: 14px; resize: vertical; }
-#messages { margin-top: 1rem; display: grid; gap: 10px; }
-.message { padding: 1rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #f9fafb; display: flex; justify-content: space-between; gap: 0.75rem; align-items: flex-start; }
-.message pre { margin: 0; white-space: pre-wrap; word-break: break-word; flex: 1; }
-button { background: #2563eb; color: white; border: none; border-radius: 8px; padding: 0.6rem 0.9rem; cursor: pointer; }
-button:disabled { opacity: 0.5; cursor: default; }
-.status { margin-top: 0.75rem; color: #555; }
-</style>
+<script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-<div class="container">
-<h1>Shared Text / JSON</h1>
-<p>Tempel teks, JSON, atau konten apa saja ke textarea, lalu tekan Enter untuk dibagikan ke semua perangkat di room ini.</p>
-<div class="room-controls">
-  <input id="room" placeholder="Nama room (kosong = public)" />
-  <input id="password" type="password" placeholder="Password room (opsional)" />
-  <button id="joinButton" type="button">Join Room</button>
+<body class="bg-slate-50 text-slate-800">
+<div class="min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-4xl bg-white shadow-xl rounded-3xl border border-slate-200 overflow-hidden">
+    <div class="flex items-center justify-between px-6 py-5 border-b border-slate-200">
+      <div>
+        <h1 class="text-2xl font-semibold">Shared Text / JSON</h1>
+        <p class="text-sm text-slate-500 mt-1">Secara otomatis terhubung ke room default <strong>global</strong>. Klik tombol Room untuk membuat atau bergabung ke room privat.</p>
+      </div>
+      <button id="openRoomButton" class="inline-flex items-center rounded-full bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">Room</button>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="flex flex-col gap-3">
+        <textarea id="input" class="min-h-[220px] w-full rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm font-mono text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200" placeholder="Tempel teks, JSON, atau apa saja lalu tekan Enter..." disabled></textarea>
+        <div class="text-sm text-slate-500" id="status">Memuat room global...</div>
+      </div>
+      <div id="messages" class="grid gap-4"></div>
+    </div>
+  </div>
 </div>
-<textarea id="input" placeholder="Tempel teks, JSON, atau apa saja lalu tekan Enter..." disabled></textarea>
-<div class="status" id="status">Masukkan room dan tekan Join Room.</div>
-<div id="messages"></div>
+
+<div id="roomModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 px-4 py-6">
+  <div class="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-200">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-lg font-semibold">Masuk Room</h2>
+        <p class="text-sm text-slate-500">Buat room privat dengan password atau bergabung ke room yang sudah ada.</p>
+      </div>
+      <button id="closeRoomButton" class="text-slate-500 hover:text-slate-900">Tutup</button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Nama Room</label>
+        <input id="room" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200" placeholder="Contoh: project-a" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Password (opsional)</label>
+        <input id="password" type="password" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200" placeholder="Password room" />
+      </div>
+      <div class="flex justify-end gap-3">
+        <button id="cancelRoomButton" class="rounded-2xl border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Batal</button>
+        <button id="joinButton" class="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">Join Room</button>
+      </div>
+    </div>
+  </div>
 </div>
 <script>
+const openRoomButton = document.getElementById('openRoomButton');
+const roomModal = document.getElementById('roomModal');
+const closeRoomButton = document.getElementById('closeRoomButton');
+const cancelRoomButton = document.getElementById('cancelRoomButton');
 const roomInput = document.getElementById('room');
 const passwordInput = document.getElementById('password');
 const joinButton = document.getElementById('joinButton');
@@ -202,7 +227,7 @@ const input = document.getElementById('input');
 const status = document.getElementById('status');
 const messages = document.getElementById('messages');
 let socket;
-let currentRoom = 'public';
+let currentRoom = 'global';
 let currentPassword = '';
 
 function setStatus(text) {
@@ -244,7 +269,7 @@ function connect(room, password) {
     socket.close();
   }
 
-  currentRoom = room || 'public';
+  currentRoom = room || 'global';
   currentPassword = password || '';
   const params = '?room=' + encodeURIComponent(currentRoom) + '&password=' + encodeURIComponent(currentPassword);
   socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws' + params);
@@ -292,10 +317,23 @@ function addMessage(text) {
   messages.prepend(wrapper);
 }
 
+openRoomButton.addEventListener('click', () => {
+  roomModal.classList.remove('hidden');
+});
+
+closeRoomButton.addEventListener('click', () => {
+  roomModal.classList.add('hidden');
+});
+
+cancelRoomButton.addEventListener('click', () => {
+  roomModal.classList.add('hidden');
+});
+
 joinButton.addEventListener('click', () => {
-  const room = roomInput.value.trim() || 'public';
+  const room = roomInput.value.trim() || 'global';
   const password = passwordInput.value;
   connect(room, password);
+  roomModal.classList.add('hidden');
 });
 
 input.addEventListener('keydown', event => {
@@ -311,11 +349,9 @@ input.addEventListener('keydown', event => {
 });
 
 const initial = parseQuery();
-if (initial.room !== 'public' || initial.password !== '') {
-  roomInput.value = initial.room === 'public' ? '' : initial.room;
-  passwordInput.value = initial.password;
-  connect(initial.room, initial.password);
-}
+roomInput.value = initial.room === 'global' ? '' : initial.room;
+passwordInput.value = initial.password;
+connect(initial.room, initial.password);
 </script>
 </body>
 </html>`
