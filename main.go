@@ -99,7 +99,7 @@ const indexHTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Shared JSON</title>
+<title>Shared Text & JSON Share</title>
 <style>
 body { font-family: system-ui, sans-serif; margin: 0; padding: 0; background: #f7f7f7; }
 .container { max-width: 760px; margin: 2rem auto; padding: 1rem; background: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
@@ -115,9 +115,9 @@ button:disabled { opacity: 0.5; cursor: default; }
 </head>
 <body>
 <div class="container">
-<h1>Shared JSON</h1>
-<p>Tempel JSON ke textarea, tekan Enter untuk berbagi ke semua pengguna yang membuka halaman ini.</p>
-<textarea id="input" placeholder="Tempel JSON lalu tekan Enter..."></textarea>
+<h1>Shared Text / JSON</h1>
+<p>Tempel teks, JSON, atau konten apa saja ke textarea, lalu tekan Enter untuk dibagikan ke semua perangkat yang terhubung.</p>
+<textarea id="input" placeholder="Tempel teks, JSON, atau apa saja lalu tekan Enter..."></textarea>
 <div class="status" id="status">Menunggu koneksi WebSocket...</div>
 <div id="messages"></div>
 </div>
@@ -129,6 +129,28 @@ let socket;
 
 function setStatus(text) {
   status.textContent = text;
+}
+
+async function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.top = '-9999px';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  const successful = document.execCommand('copy');
+  document.body.removeChild(textarea);
+
+  if (!successful) {
+    throw new Error('copy command failed');
+  }
 }
 
 function connect() {
@@ -151,7 +173,7 @@ function addMessage(text) {
   copyButton.type = 'button';
   copyButton.addEventListener('click', async () => {
     try {
-      await navigator.clipboard.writeText(text);
+      await copyToClipboard(text);
       copyButton.textContent = 'Copied';
       setTimeout(() => { copyButton.textContent = 'Copy'; }, 1200);
     } catch (err) {
