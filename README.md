@@ -10,14 +10,35 @@ Aplikasi sederhana untuk berbagi teks, JSON, atau konten apa pun antar perangkat
 
 ## Cara pakai
 
-1. Jalankan server:
+1. Pastikan Anda sudah menginstall Go di komputer.
+2. Buka terminal dan masuk ke folder project:
+   ```bash
+   cd /path/ke/sharedJson
+   ```
+3. Jalankan server lokal:
    ```bash
    go run main.go
    ```
-2. Buka browser ke `http://localhost:8080`.
-3. Tempel teks, JSON, atau konten lain ke textarea.
-4. Tekan `Enter` untuk mengirim dan membagikannya ke semua perangkat yang terhubung.
-5. Klik tombol `Copy` pada setiap pesan untuk menyalinnya ke clipboard.
+4. Buka browser dan kunjungi:
+   ```
+   http://localhost:8080
+   ```
+5. Setelah halaman terbuka, Anda akan otomatis masuk ke room `global`.
+6. Untuk membuat room privat atau mengganti username/avatar, klik tombol `Room` atau `Guest` di pojok kanan atas.
+7. Ketik atau tempel teks/JSON di textarea, lalu tekan `Enter` untuk mengirim.
+8. Pesan akan muncul di bawah dan dapat disalin dengan tombol copy di kanan.
+
+## Bagaimana ini bekerja
+
+- Aplikasi ini menggunakan WebSocket lokal untuk mengirim pesan antar browser yang terhubung ke server.
+- Pesan hanya dibagikan di dalam room yang sama.
+- Room `global` adalah default dan bersifat publik di server lokal.
+- Room privat dibuat dengan nama room dan password, sehingga hanya user yang memasukkan nama room dan password yang sama yang dapat melihat pesan.
+- Semua data dikirim langsung melalui koneksi WebSocket antara browser dan server. Tidak ada penyimpanan permanen.
+
+## Demo
+
+![Demo Shared JSON](demo.png)
 
 ## Fitur
 

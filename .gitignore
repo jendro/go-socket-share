@@ -1,0 +1,10 @@
+# Ignore temporary build output and local scratch
+/tmp/
+*.log
+*.out
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+.DS_Store
