@@ -43,6 +43,7 @@ Aplikasi sederhana untuk berbagi teks, JSON, atau konten apa pun antar perangkat
 ## Fitur
 
 - Berbagi konten real-time melalui WebSocket.
+- Berbagi file dengan preview nama file sebelum dikirim.
 - Salin ke clipboard dengan fallback untuk browser yang tidak mendukung API Clipboard modern.
 - Pesan terbaru ditampilkan di bagian atas.
 

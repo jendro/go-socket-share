@@ -605,7 +605,7 @@ input.addEventListener('keydown', event => {
       reader.onload = () => {
         socket.send(JSON.stringify({
           room: currentRoom,
-          message: text,
+          message: text || (currentUsername + ' berbagi file'),
           username: currentUsername,
           avatar: currentAvatar,
           fileName: pendingFile.name,
