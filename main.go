@@ -406,13 +406,56 @@ function addMessage(text) {
   header.appendChild(userInfo);
   header.appendChild(copyButton);
 
+  const content = document.createElement('div');
+  content.className = 'relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-4';
+  content.style.maxHeight = '200px';
+
   const pre = document.createElement('pre');
   pre.textContent = payload.message || text;
-  pre.className = 'mt-3 text-sm text-slate-700 whitespace-pre-wrap break-words';
+  pre.className = 'text-sm text-slate-700 whitespace-pre-wrap break-words';
+  pre.style.margin = 0;
+
+  const fade = document.createElement('div');
+  fade.className = 'pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent';
+
+  content.appendChild(pre);
+  content.appendChild(fade);
 
   wrapper.appendChild(header);
-  wrapper.appendChild(pre);
+  wrapper.appendChild(content);
+
+  let expandButton;
   messages.prepend(wrapper);
+
+  requestAnimationFrame(() => {
+    if (pre.scrollHeight <= 200) {
+      fade.remove();
+      return;
+    }
+
+    expandButton = document.createElement('button');
+    expandButton.type = 'button';
+    expandButton.textContent = 'Selengkapnya';
+    expandButton.className = 'mt-3 text-sm font-medium text-slate-700 hover:text-slate-900';
+
+    let expanded = false;
+    expandButton.addEventListener('click', () => {
+      expanded = !expanded;
+      if (expanded) {
+        content.style.maxHeight = 'none';
+        content.classList.remove('overflow-hidden');
+        fade.style.display = 'none';
+        expandButton.textContent = 'Sembunyikan';
+      } else {
+        content.style.maxHeight = '200px';
+        content.classList.add('overflow-hidden');
+        fade.style.display = '';
+        expandButton.textContent = 'Selengkapnya';
+      }
+    });
+
+    wrapper.appendChild(expandButton);
+  });
 }
 
 openRoomButton.addEventListener('click', () => {
